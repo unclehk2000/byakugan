@@ -1,6 +1,7 @@
 // This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
 // © Unclehk2000
 // First presented FVG concept: ICT. Inspired by "ICT 1st Presented FVG" (tristanlee85); detection written from scratch here.
+// 07:00 displacement grading and suspension blocks: ICT, Price Action Chronicles "The Science of Anticipation" (Aug 2026).
 //@version=6
 indicator("Byakugan + First Presented FVG", "Byakugan", overlay = true, max_boxes_count = 500, max_lines_count = 500, max_labels_count = 500)
 
@@ -26,6 +27,12 @@ colRng   = input.color(#1e88e5, "Range high / low", inline = "r", group = g_B, d
 colMid   = input.color(#ff9800, "Midpoint (0.5)", inline = "r", group = g_B, display = display.none)
 showFill = input.bool(true, "Shade the 7–9 box", inline = "f", group = g_B, display = display.none)
 colFill  = input.color(color.new(#1e88e5, 90), "", inline = "f", group = g_B, display = display.none)
+showLive = input.bool(true, "Draw the box while it forms", group = g_B, tooltip = "From 07:00 the box grows with price, with its 0.5 forming inside it; at 09:00 the finished levels replace it.", display = display.none)
+showOR   = input.bool(true, "First 30 minutes", inline = "o", group = g_B, display = display.none)
+orSess   = input.session("0700-0730", "", inline = "o", group = g_B, display = display.none)
+colOR    = input.color(#00897b, "", inline = "o", group = g_B, tooltip = "The first 30 minutes of the 7–9 range, high and low, drawn as they form and run to the cut-off. NQ + ES + RTY 2018–26: it already held the 7–9 high on 31% of days and the 7–9 low on 31%. By 09:00 one side was taken on 58% of days and both on 40% (neither: 2%). By 11:00 at least one side on 99.9%, both on 76%. On average it is 46% of the full 7–9 range. Tested (FOMC, CPI and NFP days left out, 5,443 days): whether its EQ sits above or below the Byakugan 0.5 gave no edge on the NY AM direction, the day’s direction, the 16:00 close against the 0.5 or the 09:30 bias. It does say which 7–9 extreme goes first (the side the range grew to after 07:30, about 65%), but that is where price already is: against a random walk from the 09:30 open it adds 3 points, not significant.", display = display.none)
+showOREQ = input.bool(false, "Its EQ (50%)", inline = "oe", group = g_B, display = display.none)
+showORv  = input.bool(true, "Vertical line at its end (07:30)", inline = "oe", group = g_B, display = display.none)
 showBias = input.bool(true, "Mark the 09:30 bias (open vs midpoint)", group = g_B, display = display.none)
 colBull  = input.color(color.green, "Bull", inline = "bb", group = g_B, display = display.none)
 colBear  = input.color(color.red, "Bear", inline = "bb", group = g_B, display = display.none)
@@ -62,6 +69,20 @@ colCEI   = input.color(#000001, "CE (50% of the gap)", tooltip = "The CE line is
 showRefl = input.bool(false, "Show the reflection FVG (first opposite-direction FVG after it)", group = g_F, display = display.none)
 colRefl  = input.color(color.new(color.blue, 80), "Reflection colour", group = g_F, display = display.none)
 
+var g_S2 = "07:00 displacement · suspension blocks (1-minute chart)"
+showDsp  = input.bool(true, "Mark the 07:00 displacement and grade it (ICT)", group = g_S2, tooltip = "The largest-body 1-minute candle in 07:00–07:14 ET, when its body is at least 5× the 06:00–06:59 median body and it leaves a fair value gap (about 1 day in 4). Graded ICT's way, in eighths: 1 = the gap edge of the candle before it, 0 = its volume-imbalance edge (the lower / higher of its close and the next open). Drawn as soon as it prints; a bigger candle before 07:15 replaces it. NQ + ES + RTY 1-minute 2018–26: price came back to the 1 by 09:00 on 84% of these days and by 11:00 on 92%, steady in 2018–24 and 2025–26 and on each symbol. The live odds on the 1 come from its distance (in 06:00–06:59 median bodies) and the time left (scored on 2025–26: Brier 0.173 → 0.153). Tested and not found: a body closing beyond the 0.5 (or any other eighth) did not raise the odds of reaching the 1 before the 0 above what a random walk from that close gives (63.5% vs 64.9%). Shown only on 1-minute charts, the timeframe it was tested on.", display = display.none)
+dspWin   = input.session("0700-0715", "Look for it in", group = g_S2, display = display.none)
+dspMult  = input.float(5.0, "Body at least x × the 06:00–06:59 median body", minval = 1.0, step = 0.5, group = g_S2, tooltip = "The odds are shown only at the settings they were measured on: 5×, 07:00–07:15 and an 11:00 cut-off.", display = display.none)
+show8    = input.bool(true, "Eighths (0.125 · 0.375 · 0.625 · 0.875)", group = g_S2, display = display.none)
+colD01I  = input.color(#000001, "Fib 0 / 1", inline = "dc", group = g_S2, display = display.none)
+colD50   = input.color(#880e4f, "0.5", inline = "dc", group = g_S2, display = display.none)
+colD8    = input.color(color.new(color.gray, 30), "Others", inline = "dc", group = g_S2, display = display.none)
+showSB   = input.bool(true, "Mark suspension blocks and their CE", group = g_S2, tooltip = "A candle whose body has a volume imbalance on both sides (ICT's suspension block), in the candle's direction, with a body at least 2× the 06:00–06:59 median, 07:00–08:59 ET. Its CE is the body's midpoint. NQ + ES + RTY 2018–26: from the CE, price went on through the block or back out of it 50/50, the same as an ordinary candle's midpoint; it came back to the CE by 11:00 slightly less often (94% vs 98%). A map, not a level with a tested edge.", display = display.none)
+sbMode   = input.string("In the displacement leg", "Suspension blocks", options = ["In the displacement leg", "All of the window"], group = g_S2, tooltip = "In the displacement leg: only blocks in the displacement's direction, from it until price first gets back to its 0.5 (as in ICT's 6 Aug 2026 example). All of the window: every block in the window below.", display = display.none)
+sbSess   = input.session("0700-0900", "Window", group = g_S2, display = display.none)
+sbMult   = input.float(2.0, "Body at least x × the 06:00–06:59 median body", minval = 0.5, step = 0.5, group = g_S2, display = display.none)
+colSB    = input.color(color.new(#ff7043, 70), "Suspension block", group = g_S2, display = display.none)
+
 // Theme: Auto follows the chart background; colours left at their default (#000001) follow it
 bgLum  = 0.299 * color.r(chart.bg_color) + 0.587 * color.g(chart.bg_color) + 0.114 * color.b(chart.bg_color)
 isDark = themeI == "Dark" or (themeI == "Auto" and bgLum < 128)
@@ -69,6 +90,7 @@ autoC(color c) => color.r(c) == 0 and color.g(c) == 0 and color.b(c) == 1
 fgAuto = isDark ? #d1d4dc : #131722
 txtCol = autoC(txtColI) ? fgAuto : txtColI
 colCE  = autoC(colCEI) ? fgAuto : colCEI
+colD01 = autoC(colD01I) ? fgAuto : colD01I
 
 
 if not timeframe.isintraday or timeframe.in_seconds() > 15 * 60
@@ -132,6 +154,7 @@ type Lv
     bool   live
     bool   watch     // dash it when price trades through after it forms
     string grp       // "byk" (stops at the cut-off) or "fp" (follows the FVG length setting)
+    string tx = ""   // the label's own text: labels at nearly the same price are merged on the last bar
 
 var array<Lv>    store = array.new<Lv>()
 var array<label> evLbl = array.new<label>()
@@ -141,7 +164,7 @@ newLabel(int t0, float y, string txt) =>
     label.new(lblLeft ? t0 : time, y, txt, xloc = xloc.bar_time, style = lblLeft ? label.style_label_right : label.style_label_left, color = #ffffff00, textcolor = txtCol, size = tSize)
 
 mkLv(int t0, float y, color col, int w, string st, string txt, bool above, bool watch, string grp) =>
-    lv = Lv.new(line.new(t0, y, time, y, xloc = xloc.bar_time, color = col, style = st, width = w), newLabel(t0, y, txt), na, y, above, dayCount, false, true, watch, grp)
+    lv = Lv.new(line.new(t0, y, time, y, xloc = xloc.bar_time, color = col, style = st, width = w), newLabel(t0, y, txt), na, y, above, dayCount, false, true, watch, grp, txt)
     store.push(lv)
     lv
 
@@ -149,7 +172,7 @@ mkLv(int t0, float y, color col, int w, string st, string txt, bool above, bool 
 mkGap(int t0, float gTop, float gBot, color col, string txt, bool ceAbove, string ceSty) =>
     ceY = (gTop + gBot) / 2
     ce  = line.new(t0, ceY, time, ceY, xloc = xloc.bar_time, color = colCE, style = ceSty, width = 1)
-    lv  = Lv.new(ce, newLabel(t0, gTop, txt), box.new(t0, gTop, time, gBot, xloc = xloc.bar_time, bgcolor = col, border_color = color.new(col, 40)), ceY, ceAbove, dayCount, false, true, true, "fp")
+    lv  = Lv.new(ce, newLabel(t0, gTop, txt), box.new(t0, gTop, time, gBot, xloc = xloc.bar_time, bgcolor = col, border_color = color.new(col, 40)), ceY, ceAbove, dayCount, false, true, true, "fp", txt)
     store.push(lv)
     lv
 
@@ -211,6 +234,68 @@ else if inRng
         bL := low
         bLt := time
 
+// the box while it forms (07:00 → 09:00), with its 0.5 inside it
+var box   bxLive = na
+var line  fmMid  = na
+var label fmLbl  = na
+if rngStart and showLive
+    if not na(fmMid)
+        fmMid.delete()
+        fmLbl.delete()
+    bxLive := na
+    if showFill
+        bxLive := box.new(time, high, time, low, xloc = xloc.bar_time, bgcolor = colFill, border_color = color.new(colRng, 55), border_width = 1)
+        store.push(Lv.new(na, label.new(time, high, "", xloc = xloc.bar_time, style = label.style_none), bxLive, high, true, dayCount, false, false, false, "box"))
+    fmMid := line.new(time, (high + low) / 2, time, (high + low) / 2, xloc = xloc.bar_time, color = colMid, style = line.style_dashed, width = 1)
+    fmLbl := label.new(time, (high + low) / 2, "Byakugan 0.5 (forming)", xloc = xloc.bar_time, style = label.style_label_left, color = #ffffff00, textcolor = colMid, size = tSize)
+if inRng and showLive and not na(fmMid)
+    if not na(bxLive)
+        bxLive.set_lefttop(bT0, bH)
+        bxLive.set_rightbottom(time, bL)
+    fmMid.set_xy1(bT0, (bH + bL) / 2)
+    fmMid.set_xy2(time, (bH + bL) / 2)
+    fmLbl.set_xy(time, (bH + bL) / 2)
+    fmLbl.set_tooltip("The 7–9 midpoint so far: " + str.tostring(math.round_to_mintick((bH + bL) / 2), format.mintick) + ". At 09:00 it becomes the Byakugan 0.5 the 09:30 open is read against.")
+
+// the first 30 minutes of the range (07:00 → 07:30): high, low and optional EQ, drawn as they form
+inOR    = sessOn(orSess)
+orStart = inOR and not inOR[1]
+orEnd   = not inOR and inOR[1]
+var float oH = na
+var float oL = na
+var array<Lv> OR3 = array.new<Lv>()
+string orTip = "The first 30 minutes of the 7–9 range. NQ + ES + RTY 2018–26: it already held the 7–9 high on 31% of days and the 7–9 low on 31%. By 09:00 one side was taken on 58% of days and both on 40% (neither: 2%); by 11:00 at least one side on 99.9%, both on 76%. On average it is 46% of the full 7–9 range. Tested (FOMC, CPI and NFP days left out, 5,443 days): whether its EQ sits above or below the Byakugan 0.5 gave no edge on the NY AM direction, the day’s direction, the 16:00 close against the 0.5 or the 09:30 bias. It does say which 7–9 extreme goes first (the side the range grew to after 07:30, about 65%), but that is where price already is: against a random walk from the 09:30 open it adds 3 points, not significant."
+if orStart and showOR
+    oH := high
+    oL := low
+    OR3.clear()
+    OR3.push(mkLv(time, high, colOR, 1, line.style_solid, "07:00–07:30 high (forming)", true, false, "byk"))
+    OR3.push(mkLv(time, low, colOR, 1, line.style_solid, "07:00–07:30 low (forming)", false, false, "byk"))
+    if showOREQ
+        OR3.push(mkLv(time, (high + low) / 2, color.new(colOR, 30), 1, line.style_dashed, "07:00–07:30 EQ (forming)", true, false, "byk"))
+    for lv in OR3
+        lv.lb.set_textcolor(colOR)
+        lv.lb.set_tooltip(orTip)
+else if inOR and showOR and OR3.size() >= 2
+    oH := math.max(oH, high)
+    oL := math.min(oL, low)
+    for k = 0 to OR3.size() - 1
+        lv = OR3.get(k)
+        float y = k == 0 ? oH : k == 1 ? oL : (oH + oL) / 2
+        lv.y := y
+        lv.ln.set_y1(y)
+        lv.ln.set_y2(y)
+        lv.lb.set_y(y)
+if orEnd and showOR and OR3.size() >= 2
+    for k = 0 to OR3.size() - 1
+        lv = OR3.get(k)
+        lv.watch := k < 2                 // from 07:30 the high and low dash once traded through
+        lv.tx := k == 0 ? "07:00–07:30 high" : k == 1 ? "07:00–07:30 low" : "07:00–07:30 EQ"
+        lv.lb.set_text(lv.tx)
+    // a vertical line at 07:30, where the first 30 minutes end
+    if showORv
+        store.push(Lv.new(line.new(time, low, time, high, xloc = xloc.bar_time, extend = extend.both, color = color.new(colOR, 40), style = line.style_dotted, width = 1), label.new(time, low, "", xloc = xloc.bar_time, style = label.style_none), na, low, false, dayCount, false, false, false, "vl"))
+
 var float bMid = na
 var int   bDay = na
 if rngEnd and not na(bH)
@@ -221,7 +306,17 @@ if rngEnd and not na(bH)
     endE  = upTravel ? bH : bL       // recent extreme
     orgE  = upTravel ? bL : bH       // origin extreme
     s     = upTravel ? 1 : -1
-    if showFill
+    if not na(fmMid)
+        fmMid.delete()
+        fmLbl.delete()
+        fmMid := na
+        fmLbl := na
+    if not na(bxLive)
+        bxLive.set_lefttop(bT0, bH)
+        bxLive.set_rightbottom(time, bL)
+        bxLive.set_border_color(color.new(colFill, 100))
+        bxLive := na
+    else if showFill
         store.push(Lv.new(na, label.new(bT0, bH, "", xloc = xloc.bar_time, style = label.style_none), box.new(bT0, bH, time, bL, xloc = xloc.bar_time, bgcolor = colFill, border_color = color.new(colFill, 100)), bH, true, dayCount, false, false, false, "box"))
     mkLv(bT0, bH, colRng, 1, line.style_solid, stampOf(bHt) + " 7–9 high", true, true, "byk")
     mkLv(bT0, bL, colRng, 1, line.style_solid, stampOf(bLt) + " 7–9 low", false, true, "byk")
@@ -304,6 +399,159 @@ if showFP and in3 and not na(fpT0) and (bullGap or bearGap)
         mkGap(t0, gTop, gBot, colRefl, stampOf(t0) + " Reflection", s < 0, line.style_dotted)
 
 // ═══════════════════════════════════════════════════════════════════
+// 07:00 DISPLACEMENT (graded in eighths) and SUSPENSION BLOCKS, 1-minute charts
+// ═══════════════════════════════════════════════════════════════════
+// Live odds of the displacement's 1 by 11:00: logit = I(t) + a·ln(1 + d), d = distance from price to the 1 in 06:00–06:59
+// median bodies, t = minutes after 07:00 (checkpoints every 15 minutes, 07:15 → 10:45). NQ + ES + RTY 2018–26.
+var array<float> DX = array.from(15.0, 30.0, 45.0, 60.0, 75.0, 90.0, 105.0, 120.0, 135.0, 150.0, 165.0, 180.0, 195.0, 210.0, 225.0)
+var array<float> DI = array.from(5.0538, 5.0674, 4.9929, 4.9542, 4.837, 4.7885, 4.6223, 4.5216, 4.4486, 4.335, 3.7409, 3.2187, 2.2723, 1.8214, 0.6266)
+DA = -1.3004
+pDsp(float m, float d) =>
+    float it = na
+    if not na(m) and not na(d) and m < 240
+        if m <= 15
+            it := DI.get(0)
+        else if m >= 225
+            it := DI.get(14) + (DI.get(14) - DI.get(13)) * (m - 225) / 15
+        else
+            int i = 0
+            while i < 13 and m >= DX.get(i + 1)
+                i += 1
+            float f = (m - DX.get(i)) / (DX.get(i + 1) - DX.get(i))
+            it := DI.get(i) * (1 - f) + DI.get(i + 1) * f
+    na(it) ? na : 100.0 / (1.0 + math.exp(-(it + DA * math.log(1 + math.max(0.0, math.min(60.0, d))))))
+pctI(float v) => na(v) ? "—" : str.tostring(math.round(v)) + "%"
+pxS(float v) => str.tostring(math.round_to_mintick(v), format.mintick)
+
+oneMin  = timeframe.in_seconds() == 60
+inPre   = sessOn("0600-0700")
+inDw    = sessOn(dspWin)
+inSBw   = sessOn(sbSess)
+dwStart = inDw and not inDw[1]
+oddsOK  = dspMult == 5.0 and dspWin == "0700-0715" and cutSess == "0700-1100"
+
+// the 06:00–06:59 median body, the yardstick for both
+var array<float> preB = array.new<float>()
+if inPre and not inPre[1]
+    preB.clear()
+if inPre
+    preB.push(math.abs(close - open))
+var float mbd = na
+var int   mbdDay = na
+var int   t700 = na
+if dwStart
+    mbd := preB.size() >= 50 ? preB.median() : na
+    mbdDay := dayCount
+    t700 := time
+
+var float dBest = 0.0
+var bool  dOk   = false
+var int   dDir  = 0
+var float dTop  = na
+var float dBot  = na
+var int   dT    = na
+var int   dHitT = na
+var label dLbl  = na
+var array<Lv>    FB = array.new<Lv>()
+var bool  legOn = false
+var array<float> FQ = array.new<float>()
+fibCol(float q) => q == 0.5 ? colD50 : (q == 0 or q == 1) ? colD01 : colD8
+fibPx(float q) => dDir < 0 ? dBot + q * (dTop - dBot) : dTop - q * (dTop - dBot)
+fibTx(float q) => str.tostring(q) + " (" + pxS(fibPx(q)) + ")"
+if dwStart
+    dBest := 0.0
+    dOk   := false
+    dHitT := na
+    dLbl  := na
+    legOn := false
+    FB.clear()
+    FQ.clear()
+
+// the candle before this bar is the candidate: the largest body so far in the window decides
+if oneMin and showDsp and inDw[1] and not dwStart and not na(mbd) and mbdDay == dayCount
+    float b1 = math.abs(close[1] - open[1])
+    if b1 > dBest
+        dBest := b1
+        int dr = close[1] > open[1] ? 1 : -1
+        bool gapOK = dr > 0 ? low > high[2] : high < low[2]
+        dOk := b1 >= dspMult * mbd and gapOK
+        dHitT := na
+        legOn := dOk
+        if dOk
+            dDir := dr
+            dTop := dr < 0 ? low[2] : math.max(close[1], open)
+            dBot := dr < 0 ? math.min(close[1], open) : high[2]
+            dT   := time[1]
+            string dTip = "07:00 displacement " + (dr < 0 ? "▼ " : "▲ ") + str.tostring(b1, format.mintick) + " pts, " + str.tostring(b1 / mbd, "0.0") + "× the 06:00–06:59 median body. Graded from 1 = " + pxS(dr < 0 ? dTop : dBot) + " (the gap edge of the candle before) to 0 = " + pxS(dr < 0 ? dBot : dTop) + " (its volume-imbalance edge). Back to the 1 by 09:00 on 84% of such days, by 11:00 on 92% (NQ + ES + RTY 2018–26)."
+            string dTx = (dr < 0 ? "▼" : "▲") + " 07:00 displacement · " + str.tostring(b1 / mbd, "0") + "×"
+            if na(dLbl)
+                dLbl := label.new(dT, dr < 0 ? high[1] : low[1], dTx, xloc = xloc.bar_time, style = dr < 0 ? label.style_label_down : label.style_label_up, color = color.new(dr < 0 ? colBear : colBull, 80), textcolor = txtCol, size = tSize, tooltip = dTip)
+                evLbl.push(dLbl)
+                evDay.push(dayCount)
+            else
+                dLbl.set_xy(dT, dr < 0 ? high[1] : low[1])
+                dLbl.set_text(dTx)
+                dLbl.set_style(dr < 0 ? label.style_label_down : label.style_label_up)
+                dLbl.set_color(color.new(dr < 0 ? colBear : colBull, 80))
+                dLbl.set_tooltip(dTip)
+            if FB.size() == 0
+                for q in array.from(0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0)
+                    if show8 or int(math.round(q * 8)) % 2 == 0
+                        FB.push(mkLv(dT, fibPx(q), fibCol(q), q == 0.5 ? 2 : 1, line.style_solid, fibTx(q), fibPx(q) > close, false, "byk"))
+                        FQ.push(q)
+            else
+                for k = 0 to FB.size() - 1
+                    lv = FB.get(k)
+                    float q = FQ.get(k)
+                    float y = fibPx(q)
+                    lv.y := y
+                    lv.ln.set_xy1(dT, y)
+                    lv.ln.set_y2(y)
+                    lv.ln.set_color(fibCol(q))
+                    lv.lb.set_y(y)
+                    lv.tx := fibTx(q)
+                    lv.lb.set_text(lv.tx)
+                    if lblLeft
+                        lv.lb.set_x(dT)
+        else if FB.size() > 0
+            // a bigger candle without the size or the gap: no displacement today
+            for lv in FB
+                lv.ln.set_color(color.new(color.gray, 100))
+                lv.tx := ""
+                lv.lb.set_text("")
+            if not na(dLbl)
+                dLbl.set_text("")
+
+// the 1: ✓ once price is back, the live odds until then
+if oneMin and showDsp and dOk and FB.size() > 0 and FB.first().day == dayCount
+    float tgt = dDir < 0 ? dTop : dBot
+    if na(dHitT) and time > dT and (dDir < 0 ? high >= tgt : low <= tgt)
+        dHitT := time
+    if inCut
+        float pD = oddsOK and not na(t700) ? pDsp((time - t700) / 60000.0 + 1, (dDir < 0 ? tgt - close : close - tgt) / mbd) : na
+        l1 = FB.last()
+        l1.tx := fibTx(1.0) + (not na(dHitT) ? " ✓ " + hhmm(dHitT) : oddsOK ? " · back by 11:00 " + pctI(pD) : "")
+        l1.lb.set_text(l1.tx)
+        l1.lb.set_tooltip("The 1 of the 07:00 displacement. Back here by 09:00 on 84% of such days, by 11:00 on 92% (NQ + ES + RTY 2018–26). Live odds from the distance to it in 06:00–06:59 median bodies and the time left; shown only at the default settings.")
+
+// suspension blocks: the candle before this bar, with a volume imbalance on both sides of its body
+if oneMin and showSB and inSBw[1] and not na(mbd) and mbdDay == dayCount
+    float bt = math.max(open[1], close[1])
+    float bb = math.min(open[1], close[1])
+    if bt - bb >= sbMult * mbd
+        int d1 = close[1] > open[1] ? 1 : -1
+        bool va = d1 > 0 ? bb > math.max(open[2], close[2]) : bt < math.min(open[2], close[2])
+        bool vb = d1 > 0 ? math.min(open, close) > bt : math.max(open, close) < bb
+        bool inLeg = sbMode != "In the displacement leg" or (legOn and dOk and d1 == dDir)
+        if va and vb and inLeg
+            float ceY = (bt + bb) / 2
+            sbl = Lv.new(line.new(time[1], ceY, time, ceY, xloc = xloc.bar_time, color = colCE, style = line.style_dotted, width = 1), newLabel(time[1], ceY, "SB CE " + pxS(ceY)), box.new(time[1], bt, time, bb, xloc = xloc.bar_time, bgcolor = colSB, border_color = color.new(colSB, 40)), ceY, ceY > close, dayCount, false, true, false, "byk", "SB CE " + pxS(ceY))
+            sbl.lb.set_tooltip("Suspension block " + hhmm(time[1]) + ": the body " + pxS(bb) + "–" + pxS(bt) + " with a volume imbalance on both sides; CE " + pxS(ceY) + ". Tested: from the CE price went on or back 50/50, like any candle's midpoint (NQ + ES + RTY 2018–26).")
+            store.push(sbl)
+if legOn and dOk and time > dT and (dDir < 0 ? high >= (dTop + dBot) / 2 : low <= (dTop + dBot) / 2)
+    legOn := false
+
+// ═══════════════════════════════════════════════════════════════════
 // EVERY BAR: grow to the current candle, stop at the cut-off, dash, age
 // ═══════════════════════════════════════════════════════════════════
 nS = store.size()
@@ -339,3 +587,62 @@ if nE > 0
         if dayCount - evDay.get(i) >= ageDays
             evLbl.get(i).set_color(color.new(agedCol, 85))
             evLbl.get(i).set_textcolor(color.gray)
+
+// ═══════════════════════════════════════════════════════════════════
+// LABELS: at the same spot and nearly the same price (within 0.5% of ADR20) they share one label, listed top to bottom
+// (the Session Map's fix, tightened so the displacement's eighths keep their own labels)
+// ═══════════════════════════════════════════════════════════════════
+float adrB = request.security(ticker.modify(syminfo.tickerid, backadjustment = backadjustment.off), "D", ta.sma(high - low, 20)[1], lookahead = barmerge.lookahead_on)
+if barstate.islast
+    float thr = 0.005 * nz(adrB, 0)
+    array<float> Y = array.new<float>()
+    array<Lv>    V = array.new<Lv>()
+    for lv in store
+        if lv.tx != "" and lv.grp != "box" and lv.grp != "vl"
+            Y.push(lv.y)
+            V.push(lv)
+    // walk down from the highest; a label within thr of the one above it (same spot) joins its group; each group's
+    // label sits at the middle of its members
+    array<float> gLast = array.new<float>()
+    array<float> gSum  = array.new<float>()
+    array<int>   gN    = array.new<int>()
+    array<int>   gX    = array.new<int>()
+    array<label> gL    = array.new<label>()
+    for i in Y.sort_indices(order.descending)
+        Lv lv = V.get(i)
+        int x = lv.lb.get_x()
+        lv.lb.set_y(lv.y)
+        int jm = -1
+        for [j, yy] in gLast
+            if jm < 0 and gX.get(j) == x and math.abs(yy - lv.y) <= thr
+                jm := j
+        if jm >= 0
+            gL.get(jm).set_text(gL.get(jm).get_text() + "\n" + lv.tx)
+            lv.lb.set_text("")
+            gLast.set(jm, lv.y)
+            gSum.set(jm, gSum.get(jm) + lv.y)
+            gN.set(jm, gN.get(jm) + 1)
+        else
+            lv.lb.set_text(lv.tx)
+            gLast.push(lv.y)
+            gSum.push(lv.y)
+            gN.push(1)
+            gX.push(x)
+            gL.push(lv.lb)
+    if not na(fmLbl) and inRng
+        float fy = (bH + bL) / 2
+        fmLbl.set_y(fy)
+        int jf = -1
+        for [j, yy] in gLast
+            if jf < 0 and gX.get(j) == fmLbl.get_x() and math.abs(yy - fy) <= thr
+                jf := j
+        if jf >= 0
+            gL.get(jf).set_text(gL.get(jf).get_text() + "\nByakugan 0.5 (forming)")
+            gSum.set(jf, gSum.get(jf) + fy)
+            gN.set(jf, gN.get(jf) + 1)
+            fmLbl.set_text("")
+        else
+            fmLbl.set_text("Byakugan 0.5 (forming)")
+    for [j, l] in gL
+        if gN.get(j) > 1
+            l.set_y(gSum.get(j) / gN.get(j))
